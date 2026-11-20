@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digital Obscura</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+  /* Day or night before the first paint: the viewer's own choice, otherwise day */
+  try { if (localStorage.getItem('do-mode')==='night') document.documentElement.setAttribute('data-mode','night'); } catch(e){}
+</script>
+<style>
+/* Layout idea: lists and contact sheets hang on one left edge like a ledger; a single frame stands alone in the centre. */
+:root{
+  /* Day: light grey page, the frames read as dark prints on it */
+  --page:#d6d6d6;
+  --ink:#1c1c1c;
+  --quiet:#555555;
+  --rule:rgba(0,0,0,.2);
+  --hole:#000000;
+  --display:"Spectral Local","Spectral",Georgia,"Times New Roman",serif;
+  --data:"IBM Plex Mono Local","IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --edge:clamp(16px,4vw,56px);
+  color-scheme:light;
+}
+/* Night: graphite, lighter than the frames' shadows, so each frame reads as a darker opening */
+:root[data-mode="night"]{--page:#1b1b1b;--ink:#e6e6e6;--quiet:#a0a0a0;--rule:rgba(255,255,255,.16);color-scheme:dark}
+
+/* The fonts are the page's own files: unmodified TTFs from the Google Fonts downloads, licences beside them in fonts/. */
+@font-face{font-family:"Spectral Local";font-style:normal;font-weight:300;font-display:block;src:url("fonts/Spectral-Light.ttf") format("truetype")}
+@font-face{font-family:"Spectral Local";font-style:normal;font-weight:400;font-display:block;src:url("fonts/Spectral-Regular.ttf") format("truetype")}
+@font-face{font-family:"IBM Plex Mono Local";font-style:normal;font-weight:400;font-display:block;src:url("fonts/IBMPlexMono-Regular.ttf") format("truetype")}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--data);font-size:13px;line-height:1.6;transition:background-color .25s,color .25s}
+a{color:inherit;text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:.25em}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+img{display:block;max-width:100%;height:auto}
+p{margin:0}
+
+.top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px 32px;padding:clamp(20px,3.2vw,36px) var(--edge) clamp(20px,3.4vw,40px)}
+.name{font-family:var(--display);font-weight:400;font-size:clamp(26px,3.4vw,34px);line-height:1.1}
+.name:hover{text-decoration:none}
+:root[data-mode="night"] .name{font-weight:300}
+.top-r{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 22px}
+.mode{padding:0;border:0;background:none;color:var(--quiet);font:inherit;cursor:pointer}
+.mode:hover{color:var(--ink);text-decoration:underline;text-underline-offset:.25em}
+.sec{display:flex;flex-wrap:wrap;gap:6px 22px}
+.sec a{white-space:nowrap}
+.sec a[aria-current="page"]{text-decoration:underline;text-underline-offset:.25em}
+
+main{padding:0 var(--edge) 72px}
+main:focus{outline:none}
+.quiet{color:var(--quiet)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Home: one centred column as wide as the frame: the frame, its caption, the ledger of series below */
+.home{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;width:min(100%,calc(min(72vh,880px)*var(--ar)));margin:0 auto}
+.cover{display:block;width:100%}
+.cover img{width:100%;background:var(--hole)}
+.note{color:var(--quiet)}
+
+.ledger{border-collapse:collapse;width:100%;margin-top:clamp(48px,8vw,104px);font-variant-numeric:tabular-nums}
+.ledger th{font-weight:400;color:var(--quiet);text-align:left;padding:0 16px 8px 0}
+.ledger td{padding:10px 16px 10px 0;border-top:1px solid var(--rule);vertical-align:baseline}
+.ledger th:last-child,.ledger td:last-child{text-align:right;padding-right:0}
+.ledger .who{font-family:var(--display);font-size:clamp(17px,1.9vw,19px);line-height:1.25}
+@media (max-width:520px){.ledger th:nth-child(4),.ledger td:nth-child(4){display:none}}
+.ledger .t{font-family:var(--display);font-size:clamp(19px,2.2vw,22px);line-height:1.25}
+
+/* Series: the contact sheet */
+h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);line-height:1.12;margin:8px 0 8px;text-wrap:balance}
+.meta{color:var(--quiet);margin-bottom:clamp(24px,4vw,48px)}
+.meta a{color:var(--ink);text-decoration:underline;text-underline-offset:.25em;white-space:nowrap}
+
+/* Text to a series: after the contact sheet, like an afterword in a photobook */
+/* Centred under the sheet; on three columns it takes exactly the middle column, so its edges line up with the frames above */
+.series-text{max-width:560px;margin:clamp(40px,5vw,72px) auto 0}
+@media (min-width:900px){.series-text{width:min(100%,max(calc((100% - 2 * clamp(14px,3vw,44px)) / 3),560px));max-width:none}}
+.series-text p{font-family:var(--display);font-size:clamp(18px,1.9vw,20px);line-height:1.55;margin:0 0 1em}
+.series-text .by{font-family:var(--data);font-size:13px;line-height:1.6;color:var(--quiet);margin-top:1.6em}
+.sheet{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(20px,3.4vw,48px) clamp(14px,3vw,44px);list-style:none;margin:0;padding:0}
+@media (min-width:900px){.sheet{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.sheet a{display:block}
+.sheet a:hover{text-decoration:none}
+.sheet img{width:100%;background:var(--hole)}
+.sheet .num{display:flex;align-items:baseline;gap:14px;margin-top:10px;color:var(--quiet);font-variant-numeric:tabular-nums}
+.shot-name{font-family:var(--display);font-size:clamp(16px,1.6vw,18px);line-height:1.3;color:var(--ink)}
+.sheet a:hover .num,.sheet a:focus-visible .num{color:var(--ink)}
+
+/* Shot: one frame, alone */
+.one{width:min(100%,calc(min(70vh,1000px)*var(--ar)));margin:0 auto}
+.home-link{margin-top:12px;text-align:center}
+.one img{width:100%;background:var(--hole)}
+.one .shot-name{display:block;margin-top:14px;font-size:clamp(19px,2vw,22px)}
+.one .cap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 24px;margin-top:6px;font-variant-numeric:tabular-nums}
+.pager{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;margin-top:20px}
+.pager > :last-child{justify-self:end}
+.pager .off{visibility:hidden}
+.frame{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
+
+/* Shot, enlarged: the frame alone on the whole screen. On an upright screen it fills the height and pans sideways. */
+.zoom{position:fixed;inset:0;width:100%;height:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:var(--page);color:var(--ink);overflow:auto;overscroll-behavior:contain;cursor:zoom-out}
+.zoom[open]{display:flex}
+.zoom img{flex:none;width:100%;height:100%;max-width:none;object-fit:contain}
+@media (orientation:portrait){.zoom img{width:auto}}
+.zoom-x{position:fixed;top:12px;right:12px;padding:8px 12px;background:var(--page);color:var(--quiet);border:1px solid var(--rule);border-radius:999px;font:inherit;font-size:12px;cursor:pointer}
+.zoom-x:hover{color:var(--ink)}
+
+/* Camera */
+.prose{margin-top:clamp(14px,2vw,24px)}
+.prose p{font-family:var(--display);font-size:clamp(19px,2.2vw,22px);line-height:1.5;max-width:34em;margin-bottom:1em}
+
+.foot{padding:0 var(--edge) 96px;color:var(--quiet)}
+
+
+@media (prefers-reduced-motion:reduce){body{transition:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="name" href="#home">Digital Obscura</a>
+  <div class="top-r">
+  <nav class="sec" aria-label="Разделы">
+    <a href="#home" id="nav-home">Серии</a>
+    <a href="#izbrannoe" id="nav-fav">Избранное</a>
+    <a href="#camera" id="nav-camera">О проекте</a>
+    <a href="#meropriyatiya" id="nav-call">Мероприятия</a>
+    <a href="#fotografam" id="nav-artists">Фотографам</a>
+  </nav>
+  <button type="button" class="mode" id="mode" aria-label="Включить ночной режим">Ночь</button>
+  </div>
+</header>
+
+<main id="view" tabindex="-1">
+  <noscript><p>Чтобы листать серии, включите JavaScript.</p></noscript>
+</main>
+
+<footer class="foot">
+  <p>Черновик от 20 ноября 2026 года. <span id="font-note"></span></p>
+</footer>
+
+<dialog id="zoom" class="zoom" aria-label="Снимок крупно">
+  <button type="button" class="zoom-x" id="zoom-close">Закрыть</button>
+  <img id="zoom-img" alt="">
+</dialog>
+
+<script>
+(function(){
+  var PLACE = 'Подвал, Санкт-Петербург';
+  var SERIES = [
+    {id:'s03', author:'', n:'03', title:'Свет под тканью', date:'19.11.2026',
+      /* Text to the series: paragraphs in order; textBy is who wrote it, if not the author. This one is a sample for the draft. */
+      text:[
+        'Это пробный текст. Так будет выглядеть предисловие автора или кураторский текст к серии; на настоящем сайте здесь будут слова фотографа или куратора.',
+        'Текст стоит после снимков, как послесловие в фотокниге: сначала смотришь, потом читаешь. Если серия длинная, до него можно дойти по ссылке «Текст к серии» под названием.',
+        'Длина любая, от пары строк до нескольких абзацев. Колонка узкая, около шестидесяти знаков в строке, поэтому длинный текст читается легко. Если текста нет, страница заканчивается сеткой, а ссылки под названием нет.'
+      ], textBy:'',
+      shots:[
+      {name:'Пятно', f:'20261119_172343', t:'17:23', alt:'Почти чёрный кадр с ярким пятном и косыми полосами'},
+      {name:'Руки', f:'20261119_172757', t:'17:27', alt:'Фигура в тёмной кофте, в кадре плечи, руки и кисти'},
+      {name:'Стремянка', f:'20261119_173233', t:'17:32', alt:'Кирпичная стена, стремянка и светильник под тканью'},
+      {name:'Светлая кофта', f:'20261119_173641', t:'17:36', alt:'Фигура в светлой кофте, в кадре плечи, руки и кисти'},
+      {name:'Фонарь под тканью', f:'20261119_215446', t:'21:54', alt:'Тёмная комната, светильник под тканью и блестящая плёнка'}
+    ]},
+    {id:'s02', author:'', n:'02', title:'Замереть', date:'17.11.2026', shots:[
+      {name:'Наклон', f:'20261117_215031', t:'21:50', alt:'Человек наклонился, рука смазана, слева блестящая ткань, справа стул'},
+      {name:'Меховая куртка', f:'20261117_215152', t:'21:51', alt:'Человек в меховой куртке, верх лица срезан краем кадра'}
+    ]},
+    {id:'s01', author:'', n:'01', title:'Первые пробы', date:'без даты', shots:[
+      {name:'Проба', f:'shot01', t:'', w:1800, h:1309, alt:'Пробный кадр: шум и два светлых пятна'}
+    ]}
+  ];
+  var COVERS = [['s02',1],['s03',1],['s03',3],['s03',4]];
+  /* Favourites: the best frames from every series in one place, in the order they should be shown. [series, frame number from 1] */
+  var FAVS = [['s02',2],['s03',4],['s03',2],['s03',3],['s02',1],['s03',5]];
+  function favAt(k){ var f = FAVS[k], se = f && series(f[0]); return se && se.shots[f[1]-1] ? {se:se, i:f[1]-1} : null; }
+
+  var view = document.getElementById('view');
+  function series(id){ for (var i=0;i<SERIES.length;i++) if (SERIES[i].id===id) return SERIES[i]; return null; }
+  function W(s){ return s.w || 1800; }
+  function H(s){ return s.h || 1476; }
+  function ar(s){ return (W(s)/H(s)).toFixed(4); }
+  function two(n){ return n<10 ? '0'+n : ''+n; }
+  function stamp(se,sh){ return se.date + (sh.t ? ', '+sh.t : ''); }
+  /* Author of a series: fill author:'Имя Фамилия' in SERIES; until then the table shows a dash. */
+  function who(s){ return s.author || '<span class="quiet" aria-label="Автор не указан">—</span>'; }
+  /* Title of a shot: fill name:'…' in SERIES; until then the shot is «Без названия». */
+  function nm(sh){ return sh.name || 'Без названия'; }
+  function frames(n){
+    var a=n%10, b=n%100;
+    if (a===1 && b!==11) return n+' кадр';
+    if (a>=2 && a<=4 && (b<12 || b>14)) return n+' кадра';
+    return n+' кадров';
+  }
+
+  function home(){
+    var pick = COVERS[Math.floor(Math.random()*COVERS.length)];
+    var se = series(pick[0]), i = pick[1], sh = se.shots[i], href = '#'+se.id+'-'+(i+1);
+    var rows = SERIES.map(function(s){
+      return '<tr><td>'+s.n+'</td><td class="t"><a href="#'+s.id+'">'+s.title+'</a></td><td class="who">'+who(s)+'</td><td>'+s.date+'</td><td>'+s.shots.length+'</td></tr>';
+    }).join('');
+    return '<div class="home" style="--ar:'+ar(sh)+'">'
+      + '<a class="cover" href="'+href+'">'
+      + '<img src="img/'+sh.f+'.jpg" alt="'+sh.alt+'" width="'+W(sh)+'" height="'+H(sh)+'"></a>'
+      + '<p class="note"><a href="'+href+'">Серия '+se.n+', кадр '+(i+1)+'. '+se.date+'</a></p>'
+      + '<table class="ledger"><thead><tr><th scope="col"><span class="sr">Номер</span></th><th scope="col">Серия</th><th scope="col">Автор</th><th scope="col">Дата</th><th scope="col">Кадров</th></tr></thead><tbody>'+rows+'</tbody></table>'
+      + '</div>';
+  }
+
+  function sheet(se){
+    var hasText = !!(se.text && se.text.length);
+    var items = se.shots.map(function(sh,i){
+      return '<li><a href="#'+se.id+'-'+(i+1)+'">'
+        + '<img src="img/'+sh.f+'_s.jpg" alt="'+sh.alt+'" width="'+W(sh)+'" height="'+H(sh)+'" loading="lazy" decoding="async">'
+        + '<span class="num"><span>'+two(i+1)+'</span><span class="shot-name">'+nm(sh)+'</span></span></a></li>';
+    }).join('');
+    return '<p><a class="quiet" href="#home">Все серии</a></p>'
+      + '<h1>'+se.title+'</h1>'
+      + '<p class="meta">Серия '+se.n+'. '+(se.date==='без даты' ? 'Без даты' : se.date)+'. '+PLACE+'. '+frames(se.shots.length)+'. '+(se.author ? 'Автор: '+se.author : 'Автор не указан')+'.'
+        + (hasText ? ' <a href="#'+se.id+'" data-jump="series-text">Текст к серии</a>' : '')+'</p>'
+      + '<ul class="sheet">'+items+'</ul>'
+      + (hasText ? '<section class="series-text" id="series-text" aria-label="Текст к серии" tabindex="-1">'
+          + se.text.map(function(t){ return '<p>'+t+'</p>'; }).join('')
+          + (se.textBy ? '<p class="by">Текст: '+se.textBy+'</p>' : '')
+          + '</section>' : '');
+  }
+
+  function favs(){
+    var items = FAVS.map(function(f,k){
+      var x = favAt(k); if (!x) return '';
+      var sh = x.se.shots[x.i];
+      return '<li><a href="#izbrannoe-'+(k+1)+'">'
+        + '<img src="img/'+sh.f+'_s.jpg" alt="'+sh.alt+'" width="'+W(sh)+'" height="'+H(sh)+'" loading="lazy" decoding="async"></a></li>';
+    }).join('');
+    return '<h1>Избранное</h1>'
+      + '<p class="meta">Лучшие кадры из всех серий.</p>'
+      + '<ul class="sheet">'+items+'</ul>';
+  }
+
+  /* One frame. In a series it leafs through the series; opened from the favourites it leafs through the favourites. */
+  function one(se,i,fav){
+    var sh = se.shots[i], n = se.shots.length, base, at, total, up, upLabel;
+    if (fav) { base = 'izbrannoe-'; at = fav.k; total = FAVS.length; up = '#izbrannoe'; upLabel = 'К избранному'; }
+    else { base = se.id+'-'; at = i; total = n; up = '#'+se.id; upLabel = 'К серии'; }
+    var prev = at>0 ? '<a href="#'+base+at+'" id="go-prev">Предыдущий</a>' : '<span class="off" aria-hidden="true">Предыдущий</span>';
+    var next = at<total-1 ? '<a href="#'+base+(at+2)+'" id="go-next">Следующий</a>' : '<span class="off" aria-hidden="true">Следующий</span>';
+    return '<div class="one" style="--ar:'+ar(sh)+'">'
+      + '<button type="button" class="frame" id="zoom-in" aria-label="Увеличить снимок. '+sh.alt+'">'
+      + '<img src="img/'+sh.f+'.jpg" alt="" width="'+W(sh)+'" height="'+H(sh)+'"></button>'
+      + '<p class="shot-name">'+nm(sh)+'</p>'
+      + '<p class="cap"><span>'+(fav ? '<a href="#'+se.id+'">Серия '+se.n+'</a>, кадр '+(i+1)+' из '+n : 'Серия '+se.n+', кадр '+(i+1)+' из '+n)+'</span><span>'+stamp(se,sh)+'</span></p>'
+      + '<p class="pager">'+prev+'<a href="'+up+'" id="go-up">'+upLabel+'</a>'+next+'</p>'
+      + '<p class="home-link"><a href="#home">На главную</a></p>'
+      + '</div>';
+  }
+
+  /* Two short pages with placeholders: [square brackets] mark what the team still has to fill in */
+  function call(){
+    return '<h1>Мероприятия</h1><div class="prose">'
+      + '<p>Digital Obscura можно пригласить на ваше мероприятие: открытие выставки, день рождения, праздник в мастерской или в баре.</p>'
+      + '<p>Мы привозим камеру и свет, ставим её в углу, и гости по очереди снимаются. Кадр пишется несколько секунд, поэтому съёмка становится маленьким ритуалом: замереть, подождать, увидеть себя на экране.</p>'
+      + '<p>Снимки гости получают [как и когда: на почту, по ссылке, на следующий день].</p>'
+      + '<p>От площадки нужен угол примерно [2×3 м] и розетка. Съёмка длится [сколько часов], стоит [цена].</p>'
+      + '<p>Напишите нам: [адрес почты]. Расскажите, где и когда вечер и сколько будет гостей.</p>'
+      + '</div>';
+  }
+  function artists(){
+    return '<h1>Фотографам</h1><div class="prose">'
+      + '<p>Мы зовём фотографов снять на Digital Obscura свою серию.</p>'
+      + '<p>С нас вечер с камерой в Подвале [или там, где вам нужно], помощь с настройкой и светом и публикация серии здесь, под вашим именем и с вашим текстом.</p>'
+      + '<p>С вас ссылка на ваши работы и пара строк о том, что вы хотели бы снять. [Опыт с большим форматом не нужен.]</p>'
+      + '<p>Права на снимки остаются у вас. Если в кадре люди, для публикации нужно их согласие.</p>'
+      + '<p>Заявки принимаем на почту: [адрес почты]. Отвечаем [в течение недели].</p>'
+      + '</div>';
+  }
+  function camera(){
+    return '<h1>О проекте</h1><div class="prose">'
+      /* Placeholder text for the draft: to be replaced by the team's own words */
+      + '<p>Digital Obscura — бродячий фотоаппарат. Мы зовём фотографов поснимать на одну и ту же камеру и собираем их съёмки здесь, серия за серией.</p>'
+      + '<p>Камера живёт в Подвале в Петербурге, но долго на месте не сидит: мы хотим возить её на вечера, в мастерские и в гости. Где она окажется в следующий раз, решаем по ходу.</p>'
+      + '<p>Снимать на неё медленно. Кадр пишется несколько секунд, человек перед объективом должен замереть, свет приходится выставлять заново под каждый снимок. Из этой медленности и получаются кадры, которые не пролистнёшь: фигуры проступают из темноты, руки смазываются, по изображению идут полосы и зерно.</p>'
+      + '<p>Каждый приглашённый фотограф снимает свою серию. Кого и как снимать, решает он сам. Серия выходит здесь целиком, под его именем и названием, а если автор захочет, то и с его текстом.</p>'
+      + '<p>Лучшие кадры из всех серий мы собираем в «Избранное». Это общий альбом камеры: в нём рядом оказываются снимки разных людей, сделанные в разных местах.</p>'
+      + '<p>Если хотите поснимать на камеру или позвать её к себе, напишите нам: [адрес почты].</p>'
+      + '</div>';
+  }
+
+  var current = {kind:'home'}, first = true;
+  function route(){
+    var h = (location.hash||'').replace('#','');
+    var m = /^(s\d\d)(?:-(\d+))?$/.exec(h), se = m ? series(m[1]) : null, html;
+    var was = current;
+    if (se && m[2] && se.shots[+m[2]-1]) {
+      var i0 = +m[2]-1;
+      current = {kind:'one', se:se, i:i0, list:se.id, href:'#'+h, nb:[se.shots[i0+1], se.shots[i0-1]]};
+      html = one(se, i0);
+    }
+    else if (se) { current = {kind:'sheet', se:se}; html = sheet(se); }
+    else if (h==='izbrannoe') { current = {kind:'favs'}; html = favs(); }
+    else if (/^izbrannoe-\d+$/.test(h) && favAt(+h.split('-')[1]-1)) {
+      var k = +h.split('-')[1]-1, x = favAt(k);
+      var xn = favAt(k+1), xp = favAt(k-1);
+      current = {kind:'one', se:x.se, i:x.i, list:'izbrannoe', href:'#'+h, nb:[xn && xn.se.shots[xn.i], xp && xp.se.shots[xp.i]]};
+      html = one(x.se, x.i, {k:k});
+    }
+    else if (h==='camera') { current = {kind:'camera'}; html = camera(); }
+    else if (h==='meropriyatiya' || h==='pozvat') { current = {kind:'call'}; html = call(); }
+    else if (h==='fotografam') { current = {kind:'artists'}; html = artists(); }
+    else { current = {kind:'home'}; html = home(); }
+    view.innerHTML = html;
+    document.getElementById('nav-home').toggleAttribute('aria-current', false);
+    document.getElementById('nav-camera').toggleAttribute('aria-current', false);
+    document.getElementById('nav-call').toggleAttribute('aria-current', false);
+    document.getElementById('nav-artists').toggleAttribute('aria-current', false);
+    document.getElementById('nav-fav').toggleAttribute('aria-current', false);
+    var inFav = current.kind==='favs' || /^izbrannoe/.test(h);
+    var navId = {camera:'nav-camera', call:'nav-call', artists:'nav-artists'}[current.kind] || (inFav ? 'nav-fav' : 'nav-home');
+    document.getElementById(navId).setAttribute('aria-current','page');
+    /* Back from a frame to its sheet: land on that frame, not on the top of the page */
+    var list = current.kind==='sheet' ? current.se.id : current.kind==='favs' ? 'izbrannoe' : null;
+    var back = list && was && was.kind==='one' && was.list===list && view.querySelector('a[href="'+was.href+'"]');
+    if (back) {
+      back.scrollIntoView({block:'center'});
+      try { back.focus({preventScroll:true}); } catch(e){}
+    } else {
+      window.scrollTo(0,0);
+      if (!first) { try { view.focus({preventScroll:true}); } catch(e){} }
+    }
+    first = false;
+    /* Fetch the neighbouring frames now, so leafing does not wait */
+    if (current.kind==='one') current.nb.forEach(function(sh){ if (sh) { var im = new Image(); im.decoding = 'async'; im.src = 'img/'+sh.f+'.jpg'; } });
+    if (zoom.open) { if (current.kind==='one') zoomShow(); else zoom.close(); }
+  }
+
+  /* Enlarged frame: a click on the photo opens it, any click or Esc closes it, the arrow keys keep leafing through the series. */
+  var zoom = document.getElementById('zoom'), zoomImg = document.getElementById('zoom-img');
+  function zoomShow(){
+    if (current.kind!=='one' || !zoom.showModal) return;
+    var sh = current.se.shots[current.i];
+    zoomImg.width = W(sh); zoomImg.height = H(sh);
+    zoomImg.alt = sh.alt;
+    zoomImg.src = 'img/'+sh.f+'.jpg';
+    if (!zoom.open) zoom.showModal();
+    zoom.scrollLeft = (zoom.scrollWidth - zoom.clientWidth) / 2;
+  }
+  view.addEventListener('click', function(e){
+    if (e.target && e.target.closest && e.target.closest('#zoom-in')) zoomShow();
+    var j = e.target && e.target.closest && e.target.closest('[data-jump]');
+    if (j) {
+      var to = document.getElementById(j.getAttribute('data-jump'));
+      if (to) {
+        e.preventDefault();
+        var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        to.scrollIntoView({behavior: calm ? 'auto' : 'smooth', block: 'start'});
+        try { to.focus({preventScroll:true}); } catch(err){}
+      }
+    }
+  });
+  zoom.addEventListener('click', function(){ if (zoom.open) zoom.close(); });
+  zoom.addEventListener('close', function(){
+    var b = document.getElementById('zoom-in');
+    if (b) { try { b.focus({preventScroll:true}); } catch(e){} }
+  });
+
+  /* Swipe on a touch screen: left for the next frame, right for the previous one */
+  var tx = null, ty = 0, tt = 0;
+  document.addEventListener('touchstart', function(e){
+    if (current.kind!=='one' || e.touches.length!==1) { tx = null; return; }
+    tx = e.touches[0].clientX; ty = e.touches[0].clientY; tt = Date.now();
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if (tx===null) return;
+    var t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty; tx = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)*1.5 || Date.now()-tt > 800) return;
+    if (zoom.open && zoom.scrollWidth > zoom.clientWidth + 2) return; /* the finger is moving across a frame wider than the screen */
+    var a = document.getElementById(dx < 0 ? 'go-next' : 'go-prev');
+    if (a) location.hash = a.getAttribute('href');
+  }, {passive:true});
+
+  document.addEventListener('keydown', function(e){
+    if (current.kind!=='one' || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (zoom.open && e.key==='Escape') return; /* the enlarged frame closes itself */
+    var id = e.key==='ArrowLeft' ? 'go-prev' : e.key==='ArrowRight' ? 'go-next' : e.key==='Escape' ? 'go-up' : null;
+    var a = id && document.getElementById(id);
+    if (a) { e.preventDefault(); location.hash = a.getAttribute('href'); }
+  });
+
+  /* The draft used to remember a page tone; day and night replace it */
+  try { localStorage.removeItem('do-tone'); } catch(e){}
+
+  /* Day and night: the button names the mode it switches to */
+  var modeBtn = document.getElementById('mode');
+  function showMode(){
+    var night = document.documentElement.getAttribute('data-mode')==='night';
+    modeBtn.textContent = night ? 'День' : 'Ночь';
+    modeBtn.setAttribute('aria-label', night ? 'Включить дневной режим' : 'Включить ночной режим');
+  }
+  modeBtn.addEventListener('click', function(){
+    var night = document.documentElement.getAttribute('data-mode')!=='night';
+    if (night) document.documentElement.setAttribute('data-mode','night'); else document.documentElement.removeAttribute('data-mode');
+    try { localStorage.setItem('do-mode', night ? 'night' : 'day'); } catch(e){}
+    showMode();
+  });
+  showMode();
+
+  window.addEventListener('hashchange', route);
+  route();
+
+  /* Safety net for the draft: if the page's own font files do not load here, take the same families from Google Fonts. Delete on the real site. */
+  if (document.fonts && document.fonts.load) {
+    var need = ['300 16px "Spectral Local"', '400 16px "Spectral Local"', '400 16px "IBM Plex Mono Local"'];
+    Promise.all(need.map(function(f){
+      return document.fonts.load(f, 'Камера Obscura 18×24').then(function(r){ return r.length > 0; }, function(){ return false; });
+    })).then(function(ok){
+      if (ok.indexOf(false) < 0) { fontNote('Шрифты загружены из файлов страницы.'); return; }
+      var l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Spectral:wght@300;400&display=swap';
+      l.onload = function(){
+        Promise.all(['300 16px "Spectral"', '400 16px "IBM Plex Mono"'].map(function(f){
+          return document.fonts.load(f, 'Камера Obscura').then(function(r){ return r.length > 0; }, function(){ return false; });
+        })).then(function(g){
+          fontNote(g.indexOf(false) < 0 ? 'Свои файлы шрифтов не загрузились, шрифты взяты с Google Fonts.' : 'Шрифты не загрузились, стоят запасные.');
+        });
+      };
+      l.onerror = function(){ fontNote('Шрифты не загрузились, стоят запасные.'); };
+      document.head.appendChild(l);
+    });
+  }
+  function fontNote(t){ var n = document.getElementById('font-note'); if (n) n.textContent = t; }
+})();
+</script>
+</body>
+</html>
