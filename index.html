@@ -129,6 +129,12 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
 /* Camera */
 .prose{margin-top:clamp(14px,2vw,24px)}
 .prose p{font-family:var(--display);font-size:clamp(19px,2.2vw,22px);line-height:1.5;max-width:34em;margin-bottom:1em}
+/* «О камере»: a short note and a quiet spec list, like a caption in a museum catalogue */
+.prose h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,3vw,30px);line-height:1.2;margin:clamp(40px,6vw,64px) 0 14px}
+.specs{display:grid;grid-template-columns:max-content 1fr;gap:10px 28px;max-width:640px;margin:22px 0 1em;font-family:var(--data);font-size:13px;line-height:1.55}
+.specs dt{color:var(--quiet)}
+.specs dd{margin:0}
+@media (max-width:520px){.specs{grid-template-columns:1fr;gap:2px}.specs dd{margin-bottom:12px}}
 
 .foot{padding:0 var(--edge) 96px;color:var(--quiet)}
 
@@ -316,6 +322,20 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
       + '<p>Каждый приглашённый фотограф снимает свою серию. Кого и как снимать, решает он сам. Серия выходит здесь целиком, под его именем и названием, а если автор захочет, то и с его текстом.</p>'
       + '<p>Лучшие кадры из всех серий мы собираем в «Избранное». Это общий альбом камеры: в нём рядом оказываются снимки разных людей, сделанные в разных местах.</p>'
       + '<p>Если хотите поснимать на камеру или позвать её к себе, напишите нам: [адрес почты].</p>'
+      + '<h2>О камере</h2>'
+      + '<p>Это старая павильонная камера, у которой вместо кассеты с пластинкой стоит офисный сканер. Он снимает с выключенной подсветкой и проходит кадр полосой сверху вниз, поэтому снимок пишется несколько секунд, а всё, что двигается, смазывается.</p>'
+      + '<dl class="specs">'
+      + '<dt>Камера</dt><dd>Павильонная ФКП 18×24</dd>'
+      + '<dt>Объектив</dt><dd>f/4,5, фокусное 300 мм [предположительно «Индустар-37», уточнить]</dd>'
+      + '<dt>Вместо кассеты</dt><dd>Сканер Canon LiDE 210, подсветка выключена</dd>'
+      + '<dt>Линза</dt><dd>Листовая линза Френеля на стекле сканера, собирает свет на датчике; её кольца иногда видны на снимках дугой</dd>'
+      + '<dt>Кадр</dt><dd>152 × 185 мм, 1792 × 2185 точек при 300 dpi</dd>'
+      + '<dt>Цвет</dt><dd>Только чёрно-белое, 16 бит</dd>'
+      + '<dt>Выдержка</dt><dd>Несколько секунд на кадр</dd>'
+      + '<dt>Резкость</dt><dd>Кремальерой, передней стенкой с объективом</dd>'
+      + '<dt>Свет</dt><dd>Яркий направленный свет прямо на модель</dd>'
+      + '<dt>Управление</dt><dd>Ноутбук и своя программа съёмки</dd>'
+      + '</dl>'
       + '</div>';
   }
 
