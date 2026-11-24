@@ -83,8 +83,10 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
 .meta{color:var(--quiet);margin-bottom:clamp(24px,4vw,48px)}
 .meta a{color:var(--ink);text-decoration:underline;text-underline-offset:.25em;white-space:nowrap}
 
-/* Series title page: like the title leaf of a photobook. Title, author, the concept; the frames follow it one by one */
-.leaf{max-width:600px;margin:clamp(8px,3vw,40px) auto 0;text-align:center}
+/* Series page: the cover frame large, under it the title and the concept, then the other frames as a sheet */
+.lead{width:min(100%,calc(min(72vh,880px)*var(--ar)));margin:0 auto}
+.lead img{width:100%;background:var(--hole)}
+.leaf{max-width:600px;margin:clamp(24px,4vw,44px) auto clamp(40px,7vw,88px);text-align:center}
 .leaf .kicker{color:var(--quiet)}
 .leaf h1{font-size:clamp(34px,5.6vw,60px);margin:14px 0 10px}
 .leaf .by-line{font-family:var(--display);font-size:clamp(19px,2.2vw,23px);line-height:1.3}
@@ -92,10 +94,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
 .concept{margin:clamp(32px,5vw,56px) 0 0;text-align:left}
 .concept p{font-family:var(--display);font-size:clamp(18px,1.9vw,20px);line-height:1.55;margin:0 0 1em}
 .concept .by{font-family:var(--data);font-size:13px;line-height:1.6;color:var(--quiet);margin-top:1.6em}
-.leaf .pager{margin-top:clamp(32px,5vw,56px);text-align:left}
-.leaf .start{font-family:var(--display);font-size:clamp(19px,2vw,21px);text-decoration:underline;text-underline-offset:.25em}
-/* Phone: «Смотреть серию» first and centred, the two quiet links under it */
-@media (max-width:520px){.leaf .pager{grid-template-columns:1fr;justify-items:center;gap:10px}.leaf .pager > :last-child{justify-self:center;order:-1}}
+
 .sheet{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(20px,3.4vw,48px) clamp(14px,3vw,44px);list-style:none;margin:0;padding:0}
 @media (min-width:900px){.sheet{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .sheet a{display:block}
@@ -173,12 +172,12 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
 (function(){
   var PLACE = 'Подвал, Санкт-Петербург';
   var SERIES = [
-    {id:'s03', author:'', n:'03', title:'Свет под тканью', date:'19.11.2026',
+    {id:'s03', author:'', n:'03', title:'Свет под тканью', date:'19.11.2026', cover:3,
       /* Text to the series: paragraphs in order; textBy is who wrote it, if not the author. This one is a sample for the draft. */
       text:[
         'Это пробный текст. Так будет выглядеть предисловие автора или кураторский текст к серии; на настоящем сайте здесь будут слова фотографа или куратора.',
-        'Текст открывает серию, как титульный лист в фотокниге: сначала несколько слов о том, что и зачем снимали, потом сами кадры, один за другим.',
-        'Длина любая, от пары строк до нескольких абзацев. Если текста нет, на этой странице остаются только название, автор и дата.'
+        'Текст стоит под заглавным снимком серии, остальные кадры идут ниже сеткой.',
+        'Длина любая, от пары строк до нескольких абзацев. Если текста нет, под снимком остаются только название, автор и дата.'
       ], textBy:'',
       shots:[
       {name:'Пятно', f:'20261119_172343', t:'17:23', alt:'Почти чёрный кадр с ярким пятном и косыми полосами'},
@@ -187,7 +186,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
       {name:'Светлая кофта', f:'20261119_173641', t:'17:36', alt:'Фигура в светлой кофте, в кадре плечи, руки и кисти'},
       {name:'Фонарь под тканью', f:'20261119_215446', t:'21:54', alt:'Тёмная комната, светильник под тканью и блестящая плёнка'}
     ]},
-    {id:'s02', author:'', n:'02', title:'Замереть', date:'17.11.2026', shots:[
+    {id:'s02', author:'', n:'02', title:'Замереть', date:'17.11.2026', cover:1, shots:[
       {name:'Наклон', f:'20261117_215031', t:'21:50', alt:'Человек наклонился, рука смазана, слева блестящая ткань, справа стул'},
       {name:'Меховая куртка', f:'20261117_215152', t:'21:51', alt:'Человек в меховой куртке, верх лица срезан краем кадра'}
     ]},
@@ -235,10 +234,19 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
   function metaLine(se){
     return (se.date==='без даты' ? 'Без даты' : se.date)+'. '+PLACE+'. '+frames(se.shots.length)+'.';
   }
-  /* Series title leaf: what the series is about; swipe or «Смотреть серию» goes to the first frame */
-  function leaf(se){
+  /* Series: the cover frame, the title and concept under it, then the other frames as a contact sheet */
+  function sheet(se){
+    var c = se.cover && se.shots[se.cover] ? se.cover : 0, cs = se.shots[c];
     var hasText = !!(se.text && se.text.length);
-    return '<article class="leaf">'
+    var items = se.shots.map(function(sh,i){
+      if (i===c) return '';
+      return '<li><a href="#'+se.id+'-'+(i+1)+'">'
+        + '<img src="img/'+sh.f+'_s.jpg" alt="'+sh.alt+'" width="'+W(sh)+'" height="'+H(sh)+'" loading="lazy" decoding="async">'
+        + '<span class="num"><span>'+two(i+1)+'</span><span class="shot-name">'+nm(sh)+'</span></span></a></li>';
+    }).join('');
+    return '<a class="lead" style="--ar:'+ar(cs)+'" href="#'+se.id+'-'+(c+1)+'">'
+        + '<img src="img/'+cs.f+'.jpg" alt="'+cs.alt+'" width="'+W(cs)+'" height="'+H(cs)+'"></a>'
+      + '<article class="leaf">'
       + '<p class="kicker">Серия '+se.n+'</p>'
       + '<h1>'+se.title+'</h1>'
       + '<p class="by-line">'+(se.author || '<span class="quiet">Автор не указан</span>')+'</p>'
@@ -247,21 +255,8 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
           + se.text.map(function(t){ return '<p>'+t+'</p>'; }).join('')
           + (se.textBy ? '<p class="by">Текст: '+se.textBy+'</p>' : '')
           + '</div>' : '')
-      + '<p class="pager"><a href="#home" id="go-prev">Все серии</a><a href="#'+se.id+'-vse" id="go-up">Все кадры</a><a href="#'+se.id+'-1" id="go-next" class="start">Смотреть серию</a></p>'
-      + '</article>';
-  }
-
-  function sheet(se){
-    var items = se.shots.map(function(sh,i){
-      return '<li><a href="#'+se.id+'-'+(i+1)+'">'
-        + '<img src="img/'+sh.f+'_s.jpg" alt="'+sh.alt+'" width="'+W(sh)+'" height="'+H(sh)+'" loading="lazy" decoding="async">'
-        + '<span class="num"><span>'+two(i+1)+'</span><span class="shot-name">'+nm(sh)+'</span></span></a></li>';
-    }).join('');
-    return '<p><a class="quiet" href="#home">Все серии</a></p>'
-      + '<h1>'+se.title+'</h1>'
-      + '<p class="meta">Серия '+se.n+'. '+metaLine(se)+' '+(se.author ? 'Автор: '+se.author+'.' : 'Автор не указан.')
-        + ' <a href="#'+se.id+'">О серии</a></p>'
-      + '<ul class="sheet">'+items+'</ul>';
+      + '</article>'
+      + (items ? '<ul class="sheet">'+items+'</ul>' : '');
   }
 
   function favs(){
@@ -280,10 +275,8 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
   function one(se,i,fav){
     var sh = se.shots[i], n = se.shots.length, base, at, total, up, upLabel;
     if (fav) { base = 'izbrannoe-'; at = fav.k; total = FAVS.length; up = '#izbrannoe'; upLabel = 'К избранному'; }
-    else { base = se.id+'-'; at = i; total = n; up = '#'+se.id+'-vse'; upLabel = 'Все кадры'; }
-    var prev = at>0 ? '<a href="#'+base+at+'" id="go-prev">Предыдущий</a>'
-      : fav ? '<span class="off" aria-hidden="true">Предыдущий</span>'
-      : '<a href="#'+se.id+'" id="go-prev">О серии</a>';
+    else { base = se.id+'-'; at = i; total = n; up = '#'+se.id; upLabel = 'К серии'; }
+    var prev = at>0 ? '<a href="#'+base+at+'" id="go-prev">Предыдущий</a>' : '<span class="off" aria-hidden="true">Предыдущий</span>';
     var next = at<total-1 ? '<a href="#'+base+(at+2)+'" id="go-next">Следующий</a>' : '<span class="off" aria-hidden="true">Следующий</span>';
     return '<div class="one" style="--ar:'+ar(sh)+'">'
       + '<button type="button" class="frame" id="zoom-in" aria-label="Увеличить снимок. '+sh.alt+'">'
@@ -331,13 +324,12 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
     var h = (location.hash||'').replace('#','');
     var m = /^(s\d\d)(?:-(\d+|vse))?$/.exec(h), se = m ? series(m[1]) : null, html;
     var was = current;
-    if (se && m[2]==='vse') { current = {kind:'sheet', se:se}; html = sheet(se); }
-    else if (se && m[2] && se.shots[+m[2]-1]) {
+    if (se && m[2] && m[2]!=='vse' && se.shots[+m[2]-1]) {
       var i0 = +m[2]-1;
       current = {kind:'one', se:se, i:i0, list:se.id, href:'#'+h, nb:[se.shots[i0+1], se.shots[i0-1]]};
       html = one(se, i0);
     }
-    else if (se) { current = {kind:'leaf', se:se, nb:[se.shots[0]]}; html = leaf(se); }
+    else if (se) { current = {kind:'sheet', se:se}; html = sheet(se); }
     else if (h==='izbrannoe') { current = {kind:'favs'}; html = favs(); }
     else if (/^izbrannoe-\d+$/.test(h) && favAt(+h.split('-')[1]-1)) {
       var k = +h.split('-')[1]-1, x = favAt(k);
@@ -360,7 +352,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
     document.getElementById(navId).setAttribute('aria-current','page');
     /* Back from a frame to its sheet: land on that frame, not on the top of the page */
     var list = current.kind==='sheet' ? current.se.id : current.kind==='favs' ? 'izbrannoe' : null;
-    var back = list && was && was.kind==='one' && was.list===list && view.querySelector('a[href="'+was.href+'"]');
+    var back = list && was && was.kind==='one' && was.list===list && view.querySelector('.sheet a[href="'+was.href+'"], .lead[href="'+was.href+'"]');
     if (back) {
       back.scrollIntoView({block:'center'});
       try { back.focus({preventScroll:true}); } catch(e){}
@@ -494,7 +486,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
   /* Swipe on a touch screen: left for the next frame, right for the previous one */
   var tx = null, ty = 0, tt = 0;
   document.addEventListener('touchstart', function(e){
-    if ((current.kind!=='one' && current.kind!=='leaf') || zoom.open || e.touches.length!==1) { tx = null; return; }
+    if (current.kind!=='one' || zoom.open || e.touches.length!==1) { tx = null; return; }
     tx = e.touches[0].clientX; ty = e.touches[0].clientY; tt = Date.now();
   }, {passive:true});
   document.addEventListener('touchend', function(e){
@@ -502,16 +494,14 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
     var t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty; tx = null;
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)*1.5 || Date.now()-tt > 800) return;
     var a = document.getElementById(dx < 0 ? 'go-next' : 'go-prev');
-    if (current.kind==='leaf' && dx > 0) return; /* from the title leaf a swipe only goes forward */
     if (a) location.hash = a.getAttribute('href');
   }, {passive:true});
 
   document.addEventListener('keydown', function(e){
-    if ((current.kind!=='one' && current.kind!=='leaf') || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (current.kind!=='one' || e.altKey || e.ctrlKey || e.metaKey) return;
     if (zoom.open && e.key==='Escape') return; /* the enlarged frame closes itself */
     if (zoom.open && (e.key==='+' || e.key==='=')) { e.preventDefault(); zTo(Z.s*1.6); return; }
     if (zoom.open && (e.key==='-' || e.key==='_')) { e.preventDefault(); zTo(Z.s/1.6); return; }
-    if (current.kind==='leaf' && e.key==='ArrowLeft') return;
     var id = e.key==='ArrowLeft' ? 'go-prev' : e.key==='ArrowRight' ? 'go-next' : e.key==='Escape' ? 'go-up' : null;
     var a = id && document.getElementById(id);
     if (a) { e.preventDefault(); location.hash = a.getAttribute('href'); }
