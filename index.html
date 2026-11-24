@@ -34,7 +34,7 @@
 @font-face{font-family:"IBM Plex Mono Local";font-style:normal;font-weight:400;font-display:block;src:url("fonts/IBMPlexMono-Regular.ttf") format("truetype")}
 
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overscroll-behavior-x:none} /* a sideways swipe leafs frames instead of making the browser go back */
 body{margin:0;background:var(--page);color:var(--ink);font-family:var(--data);font-size:13px;line-height:1.6;transition:background-color .25s,color .25s}
 a{color:inherit;text-decoration:none}
 a:hover{text-decoration:underline;text-underline-offset:.25em}
@@ -52,6 +52,12 @@ p{margin:0}
 .sec{display:flex;flex-wrap:wrap;gap:6px 22px}
 .sec a{white-space:nowrap}
 .sec a[aria-current="page"]{text-decoration:underline;text-underline-offset:.25em}
+/* Phone: the name and everything under it on one centre line */
+@media (max-width:760px){
+  .top{flex-direction:column;align-items:center;text-align:center;gap:12px}
+  .top-r{flex-direction:column;align-items:center;gap:8px}
+  .sec{justify-content:center;gap:6px 18px}
+}
 
 main{padding:0 var(--edge) 72px}
 main:focus{outline:none}
@@ -77,12 +83,19 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
 .meta{color:var(--quiet);margin-bottom:clamp(24px,4vw,48px)}
 .meta a{color:var(--ink);text-decoration:underline;text-underline-offset:.25em;white-space:nowrap}
 
-/* Text to a series: after the contact sheet, like an afterword in a photobook */
-/* Centred under the sheet; on three columns it takes exactly the middle column, so its edges line up with the frames above */
-.series-text{max-width:560px;margin:clamp(40px,5vw,72px) auto 0}
-@media (min-width:900px){.series-text{width:min(100%,max(calc((100% - 2 * clamp(14px,3vw,44px)) / 3),560px));max-width:none}}
-.series-text p{font-family:var(--display);font-size:clamp(18px,1.9vw,20px);line-height:1.55;margin:0 0 1em}
-.series-text .by{font-family:var(--data);font-size:13px;line-height:1.6;color:var(--quiet);margin-top:1.6em}
+/* Series title page: like the title leaf of a photobook. Title, author, the concept; the frames follow it one by one */
+.leaf{max-width:600px;margin:clamp(8px,3vw,40px) auto 0;text-align:center}
+.leaf .kicker{color:var(--quiet)}
+.leaf h1{font-size:clamp(34px,5.6vw,60px);margin:14px 0 10px}
+.leaf .by-line{font-family:var(--display);font-size:clamp(19px,2.2vw,23px);line-height:1.3}
+.leaf .meta{margin:10px 0 0}
+.concept{margin:clamp(32px,5vw,56px) 0 0;text-align:left}
+.concept p{font-family:var(--display);font-size:clamp(18px,1.9vw,20px);line-height:1.55;margin:0 0 1em}
+.concept .by{font-family:var(--data);font-size:13px;line-height:1.6;color:var(--quiet);margin-top:1.6em}
+.leaf .pager{margin-top:clamp(32px,5vw,56px);text-align:left}
+.leaf .start{font-family:var(--display);font-size:clamp(19px,2vw,21px);text-decoration:underline;text-underline-offset:.25em}
+/* Phone: «Смотреть серию» first and centred, the two quiet links under it */
+@media (max-width:520px){.leaf .pager{grid-template-columns:1fr;justify-items:center;gap:10px}.leaf .pager > :last-child{justify-self:center;order:-1}}
 .sheet{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(20px,3.4vw,48px) clamp(14px,3vw,44px);list-style:none;margin:0;padding:0}
 @media (min-width:900px){.sheet{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .sheet a{display:block}
@@ -103,13 +116,16 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
 .pager .off{visibility:hidden}
 .frame{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
 
-/* Shot, enlarged: the frame alone on the whole screen. On an upright screen it fills the height and pans sideways. */
-.zoom{position:fixed;inset:0;width:100%;height:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:var(--page);color:var(--ink);overflow:auto;overscroll-behavior:contain;cursor:zoom-out}
-.zoom[open]{display:flex}
-.zoom img{flex:none;width:100%;height:100%;max-width:none;object-fit:contain}
-@media (orientation:portrait){.zoom img{width:auto}}
-.zoom-x{position:fixed;top:12px;right:12px;padding:8px 12px;background:var(--page);color:var(--quiet);border:1px solid var(--rule);border-radius:999px;font:inherit;font-size:12px;cursor:pointer}
-.zoom-x:hover{color:var(--ink)}
+/* Shot, enlarged: the whole screen. Pinch, double tap, wheel or the +/- buttons bring the details closer; drag moves around */
+.zoom{position:fixed;inset:0;width:100%;height:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:var(--page);color:var(--ink);overflow:hidden;overscroll-behavior:contain}
+.stage{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:zoom-in}
+.stage.zoomed{cursor:grab}
+.stage.dragging{cursor:grabbing}
+.stage img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0;user-select:none;-webkit-user-drag:none;background:var(--hole)}
+.zoom-bar{position:absolute;right:12px;bottom:12px;display:flex;gap:6px}
+.zoom-btn,.zoom-x{min-width:44px;min-height:44px;padding:8px 14px;background:var(--page);color:var(--ink);border:1px solid var(--rule);border-radius:999px;font:inherit;font-size:14px;cursor:pointer}
+.zoom-x{position:absolute;top:12px;right:12px;font-size:12px;color:var(--quiet)}
+.zoom-btn:hover,.zoom-x:hover{color:var(--ink);border-color:var(--quiet)}
 
 /* Camera */
 .prose{margin-top:clamp(14px,2vw,24px)}
@@ -145,8 +161,12 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
 </footer>
 
 <dialog id="zoom" class="zoom" aria-label="Снимок крупно">
+  <div class="stage" id="stage"><img id="zoom-img" alt="" draggable="false"></div>
   <button type="button" class="zoom-x" id="zoom-close">Закрыть</button>
-  <img id="zoom-img" alt="">
+  <div class="zoom-bar">
+    <button type="button" class="zoom-btn" id="zoom-less" aria-label="Отдалить">−</button>
+    <button type="button" class="zoom-btn" id="zoom-more" aria-label="Приблизить">+</button>
+  </div>
 </dialog>
 
 <script>
@@ -157,8 +177,8 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
       /* Text to the series: paragraphs in order; textBy is who wrote it, if not the author. This one is a sample for the draft. */
       text:[
         'Это пробный текст. Так будет выглядеть предисловие автора или кураторский текст к серии; на настоящем сайте здесь будут слова фотографа или куратора.',
-        'Текст стоит после снимков, как послесловие в фотокниге: сначала смотришь, потом читаешь. Если серия длинная, до него можно дойти по ссылке «Текст к серии» под названием.',
-        'Длина любая, от пары строк до нескольких абзацев. Колонка узкая, около шестидесяти знаков в строке, поэтому длинный текст читается легко. Если текста нет, страница заканчивается сеткой, а ссылки под названием нет.'
+        'Текст открывает серию, как титульный лист в фотокниге: сначала несколько слов о том, что и зачем снимали, потом сами кадры, один за другим.',
+        'Длина любая, от пары строк до нескольких абзацев. Если текста нет, на этой странице остаются только название, автор и дата.'
       ], textBy:'',
       shots:[
       {name:'Пятно', f:'20261119_172343', t:'17:23', alt:'Почти чёрный кадр с ярким пятном и косыми полосами'},
@@ -212,8 +232,26 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
       + '</div>';
   }
 
-  function sheet(se){
+  function metaLine(se){
+    return (se.date==='без даты' ? 'Без даты' : se.date)+'. '+PLACE+'. '+frames(se.shots.length)+'.';
+  }
+  /* Series title leaf: what the series is about; swipe or «Смотреть серию» goes to the first frame */
+  function leaf(se){
     var hasText = !!(se.text && se.text.length);
+    return '<article class="leaf">'
+      + '<p class="kicker">Серия '+se.n+'</p>'
+      + '<h1>'+se.title+'</h1>'
+      + '<p class="by-line">'+(se.author || '<span class="quiet">Автор не указан</span>')+'</p>'
+      + '<p class="meta">'+metaLine(se)+'</p>'
+      + (hasText ? '<div class="concept">'
+          + se.text.map(function(t){ return '<p>'+t+'</p>'; }).join('')
+          + (se.textBy ? '<p class="by">Текст: '+se.textBy+'</p>' : '')
+          + '</div>' : '')
+      + '<p class="pager"><a href="#home" id="go-prev">Все серии</a><a href="#'+se.id+'-vse" id="go-up">Все кадры</a><a href="#'+se.id+'-1" id="go-next" class="start">Смотреть серию</a></p>'
+      + '</article>';
+  }
+
+  function sheet(se){
     var items = se.shots.map(function(sh,i){
       return '<li><a href="#'+se.id+'-'+(i+1)+'">'
         + '<img src="img/'+sh.f+'_s.jpg" alt="'+sh.alt+'" width="'+W(sh)+'" height="'+H(sh)+'" loading="lazy" decoding="async">'
@@ -221,13 +259,9 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
     }).join('');
     return '<p><a class="quiet" href="#home">Все серии</a></p>'
       + '<h1>'+se.title+'</h1>'
-      + '<p class="meta">Серия '+se.n+'. '+(se.date==='без даты' ? 'Без даты' : se.date)+'. '+PLACE+'. '+frames(se.shots.length)+'. '+(se.author ? 'Автор: '+se.author : 'Автор не указан')+'.'
-        + (hasText ? ' <a href="#'+se.id+'" data-jump="series-text">Текст к серии</a>' : '')+'</p>'
-      + '<ul class="sheet">'+items+'</ul>'
-      + (hasText ? '<section class="series-text" id="series-text" aria-label="Текст к серии" tabindex="-1">'
-          + se.text.map(function(t){ return '<p>'+t+'</p>'; }).join('')
-          + (se.textBy ? '<p class="by">Текст: '+se.textBy+'</p>' : '')
-          + '</section>' : '');
+      + '<p class="meta">Серия '+se.n+'. '+metaLine(se)+' '+(se.author ? 'Автор: '+se.author+'.' : 'Автор не указан.')
+        + ' <a href="#'+se.id+'">О серии</a></p>'
+      + '<ul class="sheet">'+items+'</ul>';
   }
 
   function favs(){
@@ -246,8 +280,10 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
   function one(se,i,fav){
     var sh = se.shots[i], n = se.shots.length, base, at, total, up, upLabel;
     if (fav) { base = 'izbrannoe-'; at = fav.k; total = FAVS.length; up = '#izbrannoe'; upLabel = 'К избранному'; }
-    else { base = se.id+'-'; at = i; total = n; up = '#'+se.id; upLabel = 'К серии'; }
-    var prev = at>0 ? '<a href="#'+base+at+'" id="go-prev">Предыдущий</a>' : '<span class="off" aria-hidden="true">Предыдущий</span>';
+    else { base = se.id+'-'; at = i; total = n; up = '#'+se.id+'-vse'; upLabel = 'Все кадры'; }
+    var prev = at>0 ? '<a href="#'+base+at+'" id="go-prev">Предыдущий</a>'
+      : fav ? '<span class="off" aria-hidden="true">Предыдущий</span>'
+      : '<a href="#'+se.id+'" id="go-prev">О серии</a>';
     var next = at<total-1 ? '<a href="#'+base+(at+2)+'" id="go-next">Следующий</a>' : '<span class="off" aria-hidden="true">Следующий</span>';
     return '<div class="one" style="--ar:'+ar(sh)+'">'
       + '<button type="button" class="frame" id="zoom-in" aria-label="Увеличить снимок. '+sh.alt+'">'
@@ -293,14 +329,15 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
   var current = {kind:'home'}, first = true;
   function route(){
     var h = (location.hash||'').replace('#','');
-    var m = /^(s\d\d)(?:-(\d+))?$/.exec(h), se = m ? series(m[1]) : null, html;
+    var m = /^(s\d\d)(?:-(\d+|vse))?$/.exec(h), se = m ? series(m[1]) : null, html;
     var was = current;
-    if (se && m[2] && se.shots[+m[2]-1]) {
+    if (se && m[2]==='vse') { current = {kind:'sheet', se:se}; html = sheet(se); }
+    else if (se && m[2] && se.shots[+m[2]-1]) {
       var i0 = +m[2]-1;
       current = {kind:'one', se:se, i:i0, list:se.id, href:'#'+h, nb:[se.shots[i0+1], se.shots[i0-1]]};
       html = one(se, i0);
     }
-    else if (se) { current = {kind:'sheet', se:se}; html = sheet(se); }
+    else if (se) { current = {kind:'leaf', se:se, nb:[se.shots[0]]}; html = leaf(se); }
     else if (h==='izbrannoe') { current = {kind:'favs'}; html = favs(); }
     else if (/^izbrannoe-\d+$/.test(h) && favAt(+h.split('-')[1]-1)) {
       var k = +h.split('-')[1]-1, x = favAt(k);
@@ -333,12 +370,41 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
     }
     first = false;
     /* Fetch the neighbouring frames now, so leafing does not wait */
-    if (current.kind==='one') current.nb.forEach(function(sh){ if (sh) { var im = new Image(); im.decoding = 'async'; im.src = 'img/'+sh.f+'.jpg'; } });
+    if (current.nb) current.nb.forEach(function(sh){ if (sh) { var im = new Image(); im.decoding = 'async'; im.src = 'img/'+sh.f+'.jpg'; } });
     if (zoom.open) { if (current.kind==='one') zoomShow(); else zoom.close(); }
   }
 
-  /* Enlarged frame: a click on the photo opens it, any click or Esc closes it, the arrow keys keep leafing through the series. */
-  var zoom = document.getElementById('zoom'), zoomImg = document.getElementById('zoom-img');
+  /* Enlarged frame. A click on the photo opens it; pinch, double tap, the wheel or +/- bring details closer, a drag moves around.
+     At normal size a swipe leafs on. «Закрыть», Esc or a tap beside the frame closes it. */
+  var zoom = document.getElementById('zoom'), zoomImg = document.getElementById('zoom-img'), stage = document.getElementById('stage');
+  var Z = {s:1, x:0, y:0, bw:0, bh:0, ox:0, oy:0}, MAXS = 4;
+  function zLayout(){
+    var sw = stage.clientWidth, sh = stage.clientHeight, a = zoomImg.width / zoomImg.height;
+    if (!sw || !sh || !a) return;
+    if (sw/sh > a) { Z.bh = sh; Z.bw = sh*a; } else { Z.bw = sw; Z.bh = sw/a; }
+    Z.ox = (sw - Z.bw)/2; Z.oy = (sh - Z.bh)/2;
+    zoomImg.style.width = Z.bw+'px'; zoomImg.style.height = Z.bh+'px';
+    zoomImg.style.left = Z.ox+'px'; zoomImg.style.top = Z.oy+'px';
+  }
+  function zClamp(){
+    var sw = stage.clientWidth, sh = stage.clientHeight, w = Z.bw*Z.s, hh = Z.bh*Z.s;
+    Z.x = w > sw ? Math.min(-Z.ox, Math.max(sw - Z.ox - w, Z.x)) : (Z.bw - w)/2;
+    Z.y = hh > sh ? Math.min(-Z.oy, Math.max(sh - Z.oy - hh, Z.y)) : (Z.bh - hh)/2;
+  }
+  function zApply(){
+    zClamp();
+    zoomImg.style.transform = 'translate('+Z.x+'px,'+Z.y+'px) scale('+Z.s+')';
+    stage.classList.toggle('zoomed', Z.s > 1.01);
+  }
+  /* Scale to s2 keeping the point (px,py) of the screen where it is */
+  function zTo(s2, px, py){
+    s2 = Math.max(1, Math.min(MAXS, s2));
+    if (px===undefined) { px = stage.clientWidth/2; py = stage.clientHeight/2; }
+    var u = (px - Z.ox - Z.x)/Z.s, v = (py - Z.oy - Z.y)/Z.s;
+    Z.x = px - Z.ox - u*s2; Z.y = py - Z.oy - v*s2; Z.s = s2;
+    zApply();
+  }
+  function zReset(){ Z.s = 1; Z.x = 0; Z.y = 0; zLayout(); zApply(); }
   function zoomShow(){
     if (current.kind!=='one' || !zoom.showModal) return;
     var sh = current.se.shots[current.i];
@@ -346,22 +412,80 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
     zoomImg.alt = sh.alt;
     zoomImg.src = 'img/'+sh.f+'.jpg';
     if (!zoom.open) zoom.showModal();
-    zoom.scrollLeft = (zoom.scrollWidth - zoom.clientWidth) / 2;
+    zReset();
   }
-  view.addEventListener('click', function(e){
-    if (e.target && e.target.closest && e.target.closest('#zoom-in')) zoomShow();
-    var j = e.target && e.target.closest && e.target.closest('[data-jump]');
-    if (j) {
-      var to = document.getElementById(j.getAttribute('data-jump'));
-      if (to) {
-        e.preventDefault();
-        var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-        to.scrollIntoView({behavior: calm ? 'auto' : 'smooth', block: 'start'});
-        try { to.focus({preventScroll:true}); } catch(err){}
-      }
+  window.addEventListener('resize', function(){ if (zoom.open) { var s = Z.s; zLayout(); Z.s = s; zApply(); } });
+  document.getElementById('zoom-close').addEventListener('click', function(){ zoom.close(); });
+  document.getElementById('zoom-more').addEventListener('click', function(){ zTo(Z.s*1.6); });
+  document.getElementById('zoom-less').addEventListener('click', function(){ zTo(Z.s/1.6); });
+  stage.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var r = stage.getBoundingClientRect();
+    zTo(Z.s*Math.exp(-e.deltaY*0.0015), e.clientX - r.left, e.clientY - r.top);
+  }, {passive:false});
+
+  /* Fingers and the mouse on the enlarged frame */
+  var P = {}, pin = null, drag = null, lastTap = 0, lastTapX = 0, lastTapY = 0;
+  function pts(){ return Object.keys(P).map(function(k){ return P[k]; }); }
+  stage.addEventListener('pointerdown', function(e){
+    var r = stage.getBoundingClientRect();
+    P[e.pointerId] = {x:e.clientX - r.left, y:e.clientY - r.top, x0:e.clientX - r.left, y0:e.clientY - r.top, t:Date.now()};
+    try { stage.setPointerCapture(e.pointerId); } catch(err){}
+    var p = pts();
+    if (p.length===2) {
+      drag = null;
+      pin = {d:Math.hypot(p[0].x-p[1].x, p[0].y-p[1].y) || 1, s:Z.s};
+    } else if (p.length===1) {
+      drag = {x:Z.x, y:Z.y, px:p[0].x, py:p[0].y, moved:false};
+      if (Z.s > 1.01) stage.classList.add('dragging');
     }
   });
-  zoom.addEventListener('click', function(){ if (zoom.open) zoom.close(); });
+  stage.addEventListener('pointermove', function(e){
+    if (!P[e.pointerId]) return;
+    var r = stage.getBoundingClientRect();
+    P[e.pointerId].x = e.clientX - r.left; P[e.pointerId].y = e.clientY - r.top;
+    var p = pts();
+    if (p.length===2 && pin) {
+      var d = Math.hypot(p[0].x-p[1].x, p[0].y-p[1].y) || 1;
+      zTo(pin.s*d/pin.d, (p[0].x+p[1].x)/2, (p[0].y+p[1].y)/2);
+    } else if (p.length===1 && drag) {
+      var dx = p[0].x - drag.px, dy = p[0].y - drag.py;
+      if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true;
+      if (Z.s > 1.01) { Z.x = drag.x + dx; Z.y = drag.y + dy; zApply(); }
+    }
+  });
+  function pointerEnd(e){
+    var q = P[e.pointerId]; if (!q) return;
+    delete P[e.pointerId];
+    stage.classList.remove('dragging');
+    if (pts().length) { pin = null; var o = pts()[0]; drag = {x:Z.x, y:Z.y, px:o.x, py:o.y, moved:true}; return; }
+    var wasPinch = !!pin; pin = null;
+    var d = drag; drag = null;
+    if (e.type==='pointercancel' || wasPinch || !d) return;
+    var dx = q.x - q.x0, dy = q.y - q.y0;
+    /* A swipe at normal size leafs on */
+    if (Z.s <= 1.01 && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)*1.5 && Date.now()-q.t < 800) {
+      var a = document.getElementById(dx < 0 ? 'go-next' : 'go-prev');
+      if (a && /-\d+$/.test(a.getAttribute('href'))) location.hash = a.getAttribute('href');
+      return;
+    }
+    if (d.moved) return;
+    /* A double tap or double click brings that spot closer, or back to the whole frame */
+    var now = Date.now();
+    if (now - lastTap < 320 && Math.hypot(q.x - lastTapX, q.y - lastTapY) < 30) {
+      lastTap = 0;
+      if (Z.s > 1.01) zReset(); else zTo(2.5, q.x, q.y);
+      return;
+    }
+    lastTap = now; lastTapX = q.x; lastTapY = q.y;
+    /* A single tap beside the frame closes it */
+    if (e.target===stage && Z.s <= 1.01) setTimeout(function(){ if (lastTap===now && zoom.open) zoom.close(); }, 330);
+  }
+  stage.addEventListener('pointerup', pointerEnd);
+  stage.addEventListener('pointercancel', pointerEnd);
+  view.addEventListener('click', function(e){
+    if (e.target && e.target.closest && e.target.closest('#zoom-in')) zoomShow();
+  });
   zoom.addEventListener('close', function(){
     var b = document.getElementById('zoom-in');
     if (b) { try { b.focus({preventScroll:true}); } catch(e){} }
@@ -370,21 +494,24 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);l
   /* Swipe on a touch screen: left for the next frame, right for the previous one */
   var tx = null, ty = 0, tt = 0;
   document.addEventListener('touchstart', function(e){
-    if (current.kind!=='one' || e.touches.length!==1) { tx = null; return; }
+    if ((current.kind!=='one' && current.kind!=='leaf') || zoom.open || e.touches.length!==1) { tx = null; return; }
     tx = e.touches[0].clientX; ty = e.touches[0].clientY; tt = Date.now();
   }, {passive:true});
   document.addEventListener('touchend', function(e){
     if (tx===null) return;
     var t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty; tx = null;
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)*1.5 || Date.now()-tt > 800) return;
-    if (zoom.open && zoom.scrollWidth > zoom.clientWidth + 2) return; /* the finger is moving across a frame wider than the screen */
     var a = document.getElementById(dx < 0 ? 'go-next' : 'go-prev');
+    if (current.kind==='leaf' && dx > 0) return; /* from the title leaf a swipe only goes forward */
     if (a) location.hash = a.getAttribute('href');
   }, {passive:true});
 
   document.addEventListener('keydown', function(e){
-    if (current.kind!=='one' || e.altKey || e.ctrlKey || e.metaKey) return;
+    if ((current.kind!=='one' && current.kind!=='leaf') || e.altKey || e.ctrlKey || e.metaKey) return;
     if (zoom.open && e.key==='Escape') return; /* the enlarged frame closes itself */
+    if (zoom.open && (e.key==='+' || e.key==='=')) { e.preventDefault(); zTo(Z.s*1.6); return; }
+    if (zoom.open && (e.key==='-' || e.key==='_')) { e.preventDefault(); zTo(Z.s/1.6); return; }
+    if (current.kind==='leaf' && e.key==='ArrowLeft') return;
     var id = e.key==='ArrowLeft' ? 'go-prev' : e.key==='ArrowRight' ? 'go-next' : e.key==='Escape' ? 'go-up' : null;
     var a = id && document.getElementById(id);
     if (a) { e.preventDefault(); location.hash = a.getAttribute('href'); }
